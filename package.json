@@ -1,0 +1,11 @@
+{
+  "name": "education",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "家用線上練習系統。無 npm 依賴，此檔僅用於讓 Node 以 ES Module 模式執行測試。",
+  "scripts": {
+    "test": "node test/run.js",
+    "serve": "python -m http.server 8123"
+  }
+}

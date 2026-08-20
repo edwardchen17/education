@@ -1,0 +1,77 @@
+/* ===== math.css — 數學式呈現 =====
+ * 搭配 js/engine/mathfmt.js 產生的 HTML 結構。
+ */
+
+.math {
+  font-family: "Cambria Math", "Latin Modern Math", "Times New Roman", Georgia, serif;
+  font-size: 1.06em;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+/* 允許長算式在行內換行，避免手機上溢出 */
+.math.wrap { white-space: normal; }
+
+/* ---------- 分數 ---------- */
+.math .frac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: -0.45em;
+  text-align: center;
+  margin: 0 .18em;
+}
+.math .frac > .num {
+  padding: 0 .32em .08em;
+  border-bottom: 1.4px solid currentColor;
+}
+.math .frac > .den {
+  padding: .08em .32em 0;
+}
+/* 嵌套分數縮小一級 */
+.math .frac .frac { font-size: .88em; }
+
+/* ---------- 根號 ---------- */
+.math .sqrt {
+  display: inline-flex;
+  align-items: flex-start;
+  margin: 0 .1em;
+}
+.math .sqrt > .radical {
+  font-size: 1.12em;
+  line-height: 1;
+  transform: translateY(-.04em);
+}
+.math .sqrt > .radicand {
+  border-top: 1.4px solid currentColor;
+  padding: .12em .22em 0 .1em;
+  margin-top: .12em;
+}
+.math .sqrt > .root-idx {
+  font-size: .62em;
+  transform: translate(.5em, -.15em);
+  margin-right: -.5em;
+}
+
+/* ---------- 線段 ---------- */
+.math .overline {
+  border-top: 1.4px solid currentColor;
+  padding-top: .1em;
+}
+
+/* ---------- 上下標 ---------- */
+.math sup, .math sub {
+  font-size: .68em;
+  line-height: 0;
+}
+.math sup { vertical-align: .5em; }
+.math sub { vertical-align: -.25em; }
+
+/* ---------- 在題幹中的間距 ---------- */
+.stem .math { margin: 0 .1em; }
+
+/* 手機上稍微放大，避免分數線太細看不清 */
+@media (max-width: 639px) {
+  .math { font-size: 1.12em; }
+  .math .frac > .num { border-bottom-width: 1.6px; }
+  .math .sqrt > .radicand { border-top-width: 1.6px; }
+}
