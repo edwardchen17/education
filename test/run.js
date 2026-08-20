@@ -14,7 +14,8 @@ const FILES = [
   './answer.test.js',
   './data.test.js',
   './bank.test.js',
-  './schedule.test.js'
+  './schedule.test.js',
+  './grade.test.js'
 ];
 
 console.log('\n' + '='.repeat(60));

@@ -1,0 +1,236 @@
+/* ===== app.css — 學生流程各畫面的樣式 ===== */
+
+/* ---------- 家庭密碼 ---------- */
+.gate-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+}
+.gate-card { width: 100%; max-width: 380px; }
+.gate-title {
+  font-size: 26px;
+  letter-spacing: 6px;
+  color: var(--accent-2);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+/* ---------- 選擇學生 ---------- */
+.student-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (min-width: 700px) {
+  .student-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.student-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 12px;
+  text-align: center;
+  min-height: 150px;
+  justify-content: center;
+}
+.student-avatar {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 24px;
+  background: linear-gradient(150deg, var(--accent), #2f7a73);
+  color: #06231f;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.student-name { font-size: 18px; }
+
+/* ---------- 今日任務 ---------- */
+.hero { background: linear-gradient(135deg, rgba(77,182,172,.14), var(--panel) 60%); }
+.hero-name { font-size: 22px; letter-spacing: 1px; }
+.hero-stats { display: flex; gap: 18px; text-align: right; }
+.hero-stats b { font-size: 22px; }
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.task:last-of-type { border-bottom: none; }
+.task-icon {
+  width: 38px; height: 38px; flex: 0 0 38px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  color: #08131a; font-weight: 700; font-size: 17px;
+}
+.task-title { font-size: 16px; }
+.task-done { opacity: .72; }
+.task-active .task-title::after { content: ' ●'; color: var(--warn); font-size: 11px; }
+
+.dot {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+
+/* ---------- 作答畫面 ---------- */
+.lesson-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  padding: 10px var(--pad);
+}
+.timer-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 17px;
+  color: var(--gold);
+}
+.btn-mini {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.navrow {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px 0 2px;
+  scrollbar-width: thin;
+}
+.navdot {
+  flex: 0 0 auto;
+  width: 34px; height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+  color: var(--dim);
+}
+.navdot.done { color: var(--ink); border-color: var(--accent); background: rgba(77,182,172,.16); }
+.navdot.peeked { border-color: var(--warn); color: var(--warn); }
+.navdot.cur {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 1px;
+  color: var(--ink);
+}
+
+.stem {
+  font-size: 1.08em;
+  line-height: 1.9;
+  margin: 10px 0 14px;
+}
+
+/* ---------- 選項 ---------- */
+.opts { display: flex; flex-direction: column; gap: 8px; }
+.opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 12px 14px;
+  width: 100%;
+  line-height: 1.7;
+}
+.opt-key {
+  flex: 0 0 26px;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line-2);
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+  color: var(--dim);
+}
+.opt-text { flex: 1; }
+.opt.on { border-color: var(--accent); background: rgba(77,182,172,.16); }
+.opt.on .opt-key { background: var(--accent); color: #06231f; border-color: transparent; }
+
+/* 檢討畫面的靜態選項 */
+.opt-static { cursor: default; }
+.opt-static:hover { background: var(--panel-2); border-color: var(--line-2); }
+.opt-tag { color: var(--dim); font-size: 12px; flex: 0 0 auto; }
+.opt.right { border-color: var(--ok); }
+.opt.right .opt-key { background: var(--ok); color: #06231f; border-color: transparent; }
+.opt.mine { background: rgba(100,181,246,.12); }
+.opt.mine.right { background: rgba(102,187,106,.16); }
+
+/* ---------- 填答 ---------- */
+.answer-row { display: flex; align-items: center; gap: 10px; }
+.answer-row input { font-size: 1.15em; font-family: ui-monospace, monospace; }
+.unit { color: var(--dim); flex: 0 0 auto; }
+
+/* ---------- 解題邏輯 ---------- */
+.rat-row {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rat-row:last-child { border-bottom: none; }
+
+/* ---------- 成績 ---------- */
+.score-hero {
+  text-align: center;
+  padding: 14px 0 6px;
+}
+.score-num {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  font-family: ui-monospace, monospace;
+}
+.score-sub { color: var(--dim); font-size: 14px; margin-top: 6px; }
+
+/* ---------- 老師介面 ---------- */
+.admin-student {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.admin-student:last-child { border-bottom: none; }
+.admin-diffs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+@media (min-width: 640px) {
+  .admin-diffs { grid-template-columns: 1fr 1fr; }
+}
+.admin-diff {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.admin-diff > span { flex: 0 0 4.5em; color: var(--ink-2); }
+.admin-diff select { flex: 1; min-height: 38px; }
+.lockbox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--dim);
+  flex: 0 0 auto;
+}
+.lockbox input { width: auto; min-height: auto; }
+
+/* ---------- 手機微調 ---------- */
+@media (max-width: 639px) {
+  .hero-stats b { font-size: 19px; }
+  .score-num { font-size: 44px; }
+  .opt { padding: 11px 12px; }
+  .student-card { min-height: 132px; padding: 14px 8px; }
+  .student-avatar { width: 46px; height: 46px; font-size: 20px; }
+}
