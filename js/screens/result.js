@@ -12,6 +12,7 @@ import { DIFFICULTY_LABEL } from '../config/scoring.js';
 import { subjectLabel } from '../config/subjects.js';
 import { topicLabel } from '../config/topics.js';
 import * as DB from '../db.js';
+import { isDemo } from '../demo.js';
 
 const LETTERS = 'ABCDEFGH';
 const TYPE_LABEL = { mc: '單選', mmc: '多選', fill: '填空', calc: '計算', short: '簡答', essay: '作文' };
@@ -65,7 +66,9 @@ export default {
           </div>
 
           <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:14px">
-            <button data-go="home" class="btn-primary">回到今日任務</button>
+            ${isDemo()
+              ? '<button data-go="demo" class="btn-primary">再來一張新的考卷</button>'
+              : '<button data-go="home" class="btn-primary">回到今日任務</button>'}
             <button id="expandAll">全部展開</button>
           </div>
         </div>

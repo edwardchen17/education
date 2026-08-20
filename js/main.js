@@ -20,15 +20,18 @@ import admin from './screens/admin.js';
 import preview from './screens/preview.js';
 import diag from './screens/diag.js';
 import help from './screens/help.js';
+import demo from './screens/demo.js';
+import { isDemo, resumeDemo, DEMO_ROUTES } from './demo.js';
 
 const app = document.getElementById('app');
 
 const routes = {
-  gate, students, home, lesson, result, history, admin, preview, diag, help
+  gate, students, home, lesson, result, history, admin, preview, diag, help, demo
 };
 
-/** 不需要家庭驗證就能開的畫面。使用說明純靜態，斷線或還沒登入都能看。 */
-const PUBLIC = new Set(['gate', 'help']);
+/** 不需要家庭驗證就能開的畫面。使用說明純靜態，斷線或還沒登入都能看；
+ *  試用模式自己帶一個本機的假 session，也不需要家庭密碼。 */
+const PUBLIC = new Set(['gate', 'help', 'demo']);
 
 let currentScreen = null;
 
@@ -54,6 +57,10 @@ async function navigate() {
   const screen = routes[name];
   if (!screen) { renderNotFound(); return; }
 
+  /* 試用模式只開放少數畫面，把訪客留在乾淨的動線上：
+   * 沒有選學生、沒有家庭密碼、沒有老師介面。 */
+  if (isDemo() && !DEMO_ROUTES.has(name)) { location.hash = '#/demo'; return; }
+
   if (!PUBLIC.has(name)) {
     const signed = await Auth.hasSession();
     if (!signed) { location.hash = '#/gate'; return; }
@@ -70,6 +77,21 @@ async function navigate() {
   }
 
   renderOfflineBadge();
+  renderDemoBadge();
+}
+
+/** 試用模式常駐提示，讓訪客隨時知道自己在試用、也隨時能離開 */
+function renderDemoBadge() {
+  document.getElementById('demobadge')?.remove();
+  if (!isDemo()) return;
+
+  const el = document.createElement('div');
+  el.id = 'demobadge';
+  el.className = 'demo-badge';
+  el.innerHTML = `<span>試用模式</span>`;
+  el.onclick = () => { location.hash = '#/demo'; };
+  el.title = '回到試用首頁';
+  document.body.appendChild(el);
 }
 
 function renderNotFound() {
@@ -136,7 +158,11 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && currentScreen?.teardown) currentScreen.teardown();
 });
 
-if (!location.hash) location.hash = '#/home';
+/* 分頁重新載入時恢復試用模式。一定要在第一次 navigate 之前做，
+ * 否則路由守門會去問真正的 Supabase 有沒有 session。 */
+const resumed = resumeDemo();
+
+if (!location.hash) location.hash = resumed ? '#/demo' : '#/home';
 navigate();
 
 console.log(`練習系統 ${APP_VERSION}`);

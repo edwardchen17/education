@@ -12,10 +12,11 @@ import { DIFFICULTY_LABEL } from '../config/scoring.js';
 import { todaySummary } from '../engine/schedule.js';
 import { Draft } from '../cache.js';
 import * as DB from '../db.js';
+import { currentStudentId } from '../demo.js';
 
 export default {
   async render(host) {
-    const id = Number(localStorage.getItem('edu.currentStudent') || 0);
+    const id = currentStudentId();
     if (!id) { location.hash = '#/students'; return; }
 
     host.innerHTML = `<div class="loading"><div class="spinner"></div><div>看看今天要做什麼</div></div>`;

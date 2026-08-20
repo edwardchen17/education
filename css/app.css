@@ -430,6 +430,46 @@
 }
 .lockbox input { width: auto; min-height: auto; }
 
+/* ---------- 訪客試用 ---------- */
+.demo-badge {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 70;
+  padding: 5px 12px;
+  border-radius: 14px;
+  background: rgba(255, 183, 77, .16);
+  border: 1px solid rgba(255, 183, 77, .45);
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  user-select: none;
+}
+.demo-badge:hover { background: rgba(255, 183, 77, .26); }
+
+.diff-btn { min-width: 92px; }
+.diff-btn.on {
+  border-color: var(--accent);
+  background: rgba(77, 182, 172, .18);
+  color: var(--ink);
+}
+
+.paper-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  font-size: 14px;
+}
+.paper-row:last-child { border-bottom: none; }
+.paper-row:hover { background: var(--panel-2); }
+
 /* ---------- 使用說明 ---------- */
 .help-step {
   display: flex;

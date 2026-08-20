@@ -125,15 +125,20 @@ export function installBrowserStubs() {
   if (globalThis.__stubbed) return;
   globalThis.__stubbed = true;
 
-  const store = new Map();
-  globalThis.localStorage = {
-    getItem: k => (store.has(k) ? store.get(k) : null),
-    setItem: (k, v) => store.set(k, String(v)),
-    removeItem: k => store.delete(k),
-    clear: () => store.clear(),
-    get length() { return store.size; },
-    key: i => [...store.keys()][i] ?? null
+  const makeStorage = () => {
+    const store = new Map();
+    return {
+      getItem: k => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: k => store.delete(k),
+      clear: () => store.clear(),
+      get length() { return store.size; },
+      key: i => [...store.keys()][i] ?? null
+    };
   };
+
+  globalThis.localStorage = makeStorage();
+  globalThis.sessionStorage = makeStorage();
 
   const el = () => ({
     innerHTML: '', textContent: '', value: '', style: {}, dataset: {},
@@ -171,9 +176,10 @@ export function installBrowserStubs() {
   }
 }
 
-/** 清空替身的 localStorage，供測試之間互不干擾 */
+/** 清空替身的 localStorage 與 sessionStorage，供測試之間互不干擾 */
 export function resetStorage() {
   if (globalThis.localStorage) globalThis.localStorage.clear();
+  if (globalThis.sessionStorage) globalThis.sessionStorage.clear();
 }
 
 /* ------------------------------------------------------------------ */

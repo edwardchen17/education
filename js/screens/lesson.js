@@ -12,6 +12,7 @@ import { topicLabel } from '../config/topics.js';
 import { Draft } from '../cache.js';
 import * as DB from '../db.js';
 import { submitLesson } from '../engine/grade.js';
+import { currentStudentId } from '../demo.js';
 
 const LETTERS = 'ABCDEFGH';
 const TYPE_LABEL = { mc: '單選', mmc: '多選', fill: '填空', calc: '計算', short: '簡答', essay: '作文' };
@@ -127,7 +128,7 @@ function stopTicking() {
 }
 
 async function currentStudent() {
-  const id = Number(localStorage.getItem('edu.currentStudent') || 0);
+  const id = currentStudentId();
   if (!id) return null;
   return DB.students.get(id);
 }

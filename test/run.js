@@ -18,7 +18,8 @@ const FILES = [
   './grade.test.js',
   './grading.test.js',
   './selection.test.js',
-  './e2e.test.js'
+  './e2e.test.js',
+  './demo.test.js'
 ];
 
 console.log('\n' + '='.repeat(60));

@@ -6,10 +6,11 @@ import { escapeHtml, fmtDateTW, fmtDuration } from '../core.js';
 import { subjectLabel, SUBJECT_META } from '../config/subjects.js';
 import { DIFFICULTY_LABEL } from '../config/scoring.js';
 import * as DB from '../db.js';
+import { currentStudentId } from '../demo.js';
 
 export default {
   async render(host) {
-    const id = Number(localStorage.getItem('edu.currentStudent') || 0);
+    const id = currentStudentId();
     if (!id) { location.hash = '#/students'; return; }
 
     host.innerHTML = `<div class="loading"><div class="spinner"></div><div>載入紀錄</div></div>`;

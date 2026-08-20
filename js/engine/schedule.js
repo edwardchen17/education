@@ -242,6 +242,59 @@ export async function assignLesson({ student, date, slot = 1, subject, difficult
   });
 }
 
+/**
+ * 建立一張額外的練習卷，不受每日堂數限制。
+ *
+ * 和 ensureToday 的差別是這個函式刻意「不冪等」：每次呼叫都排在下一個空節次、
+ * 用新的隨機種子，因此每次拿到的都是不同的題目。訪客試用模式用它做到
+ * 「不限次數、每次換一張」。
+ *
+ * @param {object} o
+ *   student     學生列
+ *   subject     科目
+ *   difficulty  難度
+ *   date        日期（預設今天）
+ *   settings    系統設定
+ *   seed        指定種子（測試用；不給就用時間加亂數）
+ */
+export async function createPracticeLesson({ student, subject, difficulty, date, settings, seed }) {
+  const day = date || todayTW();
+  const cfg = settings || await DB.settings.get();
+  const diff = difficulty || DIFFICULTIES[0];
+
+  const existing = await DB.lessons.forDate(student.id, day);
+  const slot = existing.reduce((m, l) => Math.max(m, l.slot_of_day), 0) + 1;
+
+  const staticPool = await loadPool(subject, student.level);
+  const plan = buildPlan({
+    subject, level: student.level, difficulty: diff,
+    dueTopics: [], staticPool, settings: cfg,
+    seed: seed ?? hash(`practice|${student.id}|${day}|${slot}|${subject}|${Date.now()}|${Math.random()}`)
+  });
+
+  if (!plan.items.length) throw new Error(`${subject} 目前還沒有題庫可以出題。`);
+
+  const scoreMax = plan.items.reduce(
+    (s, q) => s + q.base_points * multiplierOf(q.difficulty), 0);
+
+  return DB.lessons.createIfAbsent({
+    student_id: student.id,
+    lesson_date: day,
+    slot_of_day: slot,
+    subject,
+    status: 'pending',
+    assigned_by: 'admin',
+    plan: {
+      items: plan.items,
+      seconds: plan.seconds,
+      review_count: plan.reviewCount,
+      difficulty: diff
+    },
+    score_max: Math.round(scoreMax * 100) / 100,
+    pending_grading: plan.items.filter(q => q.type === 'essay' || q.type === 'short').length
+  });
+}
+
 /** 今日任務摘要，供首頁顯示 */
 export async function todaySummary(student, date = todayTW()) {
   const lessons = await ensureToday(student, { date });
