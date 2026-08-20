@@ -246,6 +246,14 @@ suite('資料層：錯誤訊息轉為中文', () => {
     }
   });
 
+  test('RLS 過濾後的空結果不是錯誤，而是空陣列', async () => {
+    // PostgREST 在 RLS 之下對 SELECT 會把資料列過濾掉並回傳 200 加空陣列。
+    // 因此畫面不能靠「有沒有丟例外」判斷是否已登入，必須明確檢查 session。
+    injectClient(makeFakeSupabase({ students: [], app_settings: [] }));
+    const rows = await students.list();
+    deepEq(rows, [], '未登入時應得到空陣列而非例外');
+  });
+
   test('連線失敗會提示專案可能被暫停', async () => {
     injectClient({
       from: () => ({

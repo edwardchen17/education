@@ -165,22 +165,78 @@ register('diag', {
       }
     });
 
+    /* RLS 三步驗證。
+     * 重點：PostgREST 對 SELECT 的行為是「把資料列過濾掉」而不是回傳錯誤，
+     * 所以未登入時讀到 0 筆才是 RLS 正常。寫入才會觸發 42501 權限錯誤。 */
     $('btnRls').addEventListener('click', async () => {
-      out('測試中…');
+      const steps = [];
+      const paint = () => out(`
+        <div class="stack">
+          ${steps.map(s => `
+            <div class="row" style="gap:8px;align-items:flex-start">
+              <span class="${s.pass === null ? 't-dim' : s.pass ? 't-ok' : 't-bad'}"
+                    style="flex:0 0 1.4em">${s.pass === null ? '…' : s.pass ? '✓' : '✗'}</span>
+              <span>${s.text}</span>
+            </div>`).join('')}
+        </div>`);
+
+      const step = text => { steps.push({ text, pass: null }); paint(); return steps[steps.length - 1]; };
+
       try {
-        await Auth.signOutDevice();
-        try {
-          const rows = await DB.students.list();
-          out(`<div class="banner banner-bad">
-                 <b>警告</b>：未登入狀態竟然讀到了 ${rows.length} 筆資料，RLS 沒有生效，
-                 請把這個結果告訴我。
-               </div>`);
-        } catch {
-          out(`<div class="banner banner-ok">
-                 RLS 正常：登出後讀取被資料庫拒絕，外人拿到網頁裡的金鑰也讀不到資料。
-               </div>
-               <div class="t-dim t-sm" style="margin-top:8px">已順便登出，請重新登入。</div>`);
+        /* 步驟 1：已登入時應該讀得到四筆 */
+        const s1 = step('已登入時讀取學生資料');
+        if (!await Auth.hasSession()) {
+          s1.pass = false;
+          s1.text = '需要先登入才能測試，請輸入家庭密碼後再按一次';
+          paint();
+          setState('banner-warn', '尚未登入');
+          $('loginBox').style.display = '';
+          return;
         }
+        const before = await DB.students.list();
+        s1.pass = before.length === 4;
+        s1.text = `已登入時讀到 <b>${before.length}</b> 筆學生資料${s1.pass ? '' : '（預期 4 筆）'}`;
+        paint();
+
+        /* 步驟 2：登出後讀取應該變成 0 筆（RLS 把資料列過濾掉） */
+        const s2 = step('登出後讀取');
+        await Auth.signOutDevice();
+        let after;
+        let selectBlocked = false;
+        try {
+          after = await DB.students.list();
+        } catch {
+          selectBlocked = true;
+          after = [];
+        }
+        s2.pass = after.length === 0;
+        s2.text = selectBlocked
+          ? '登出後讀取直接被拒絕'
+          : `登出後讀到 <b>${after.length}</b> 筆${s2.pass ? '（RLS 已把資料列全部過濾掉）' : '　<b>這是問題</b>，外人可能讀得到資料'}`;
+        paint();
+
+        /* 步驟 3：登出後寫入應該被權限錯誤擋下 */
+        const s3 = step('登出後嘗試寫入');
+        try {
+          await DB.notifications.add(1, 'rls_probe', { note: '權限測試' });
+          s3.pass = false;
+          s3.text = '登出後竟然寫入成功　<b>這是嚴重問題</b>，請把這個結果告訴我';
+        } catch (err) {
+          s3.pass = true;
+          s3.text = `登出後寫入被拒絕：<span class="t-dim">${escapeHtml(err.message)}</span>`;
+        }
+        paint();
+
+        const allPass = steps.every(s => s.pass);
+        steps.push({
+          pass: allPass,
+          text: allPass
+            ? '<b class="t-ok">RLS 設定正確。</b>外人即使拿到網頁裡的金鑰，既讀不到也寫不進你的資料。'
+            : '<b class="t-bad">有項目未通過</b>，請把畫面截圖給我。'
+        });
+        steps.push({ pass: true, text: '<span class="t-dim">測試過程中已登出，請重新登入。</span>' });
+        paint();
+
         setState('banner-warn', '尚未登入');
         $('loginBox').style.display = '';
       } catch (err) {
