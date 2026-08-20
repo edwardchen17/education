@@ -238,7 +238,8 @@ async function enqueueReview(studentId, rows, date) {
  * 批改單一題（作文或簡答）。
  * 全部批改完成後，課堂成績由暫定轉為正式並補上積分（需求 9.5、9.6）。
  *
- * @param {object} o { attempt, grade: {score, comment, marks} }
+ * @param {object} o { attempt, grade: {score, comment, marks, items} }
+ *   items 是評分規準逐項的原始給分，回頭修改分數時用來還原輸入框。
  */
 export async function applyTeacherGrade({ attempt, grade }) {
   const max = Number(attempt.max_score);
@@ -251,6 +252,7 @@ export async function applyTeacherGrade({ attempt, grade }) {
       score,
       comment: grade.comment || '',
       marks: grade.marks || [],
+      items: grade.items || null,
       graded_at: new Date().toISOString()
     }
   });
@@ -271,6 +273,7 @@ export async function reviseGrade({ attempt, grade }) {
       score,
       comment: grade.comment ?? attempt.grade?.comment ?? '',
       marks: grade.marks ?? attempt.grade?.marks ?? [],
+      items: grade.items ?? attempt.grade?.items ?? null,
       revised_at: new Date().toISOString()
     }
   });
@@ -295,6 +298,29 @@ function clampScore(v, max) {
   const n = Number(v);
   if (!Number.isFinite(n)) return 0;
   return round2(Math.min(Math.max(n, 0), max));
+}
+
+/**
+ * 把評分規準的逐項給分換算成該題的實得分數（需求 9.3）。
+ *
+ * 規準的配分總和（例如 30 分）與該題滿分（會隨難度倍率變動，例如 39 分）
+ * 通常不相等，所以用比例換算，而不是直接相加。
+ *
+ * @param {number[]} items    每一項的給分，順序對應 rubric
+ * @param {object[]} rubric   [{ item, points, desc }]
+ * @param {number}   max      該題滿分
+ * @returns {{ sum:number, rubricMax:number, score:number }}
+ */
+export function scaleRubric(items, rubric, max) {
+  const list = Array.isArray(rubric) ? rubric : [];
+  const rubricMax = list.reduce((s, r) => s + (Number(r.points) || 0), 0);
+  const sum = round2(list.reduce(
+    (s, r, i) => s + clampScore(items?.[i], Number(r.points) || 0), 0));
+
+  /* 規準沒有配分時無法換算，退回把逐項分數當成實得分數 */
+  if (rubricMax <= 0) return { sum, rubricMax: 0, score: clampScore(sum, max) };
+
+  return { sum, rubricMax, score: clampScore(sum / rubricMax * Number(max), max) };
 }
 
 /** 重新計算課堂的得分與待批改數，必要時轉為正式成績 */

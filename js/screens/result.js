@@ -168,6 +168,7 @@ function answerBlock(r, q) {
         <div class="passage-body">${escapeHtml(String(raw || '（空白）')).replace(/\n/g, '<br>')}</div>
       </div>
       ${g ? `
+        ${marksBlock(g.marks)}
         <div class="banner banner-ok" style="margin-top:10px">
           <b>老師的評語</b><br>${escapeHtml(g.comment || '（沒有寫評語）').replace(/\n/g, '<br>')}
         </div>` : `
@@ -179,6 +180,23 @@ function answerBlock(r, q) {
     <div class="grid-2">
       <div class="prow"><span>你填的</span><b class="${r.is_correct ? 't-ok' : 't-bad'}">${escapeHtml(shown)}</b></div>
       <div class="prow"><span>答案</span><b class="t-gold">${renderMath(answerDisplay(q))}</b></div>
+    </div>`;
+}
+
+/** 老師逐段標註（需求 9.4）。沒有標註時什麼都不畫。 */
+function marksBlock(marks) {
+  const list = Array.isArray(marks) ? marks.filter(m => m && m.text) : [];
+  if (!list.length) return '';
+  return `
+    <div class="t-sm t-dim" style="margin:12px 0 6px">老師圈出來的地方　${list.length} 處</div>
+    <div class="marks">
+      ${list.map(m => `
+        <div class="mark-row">
+          <div class="grow">
+            <div class="mark-quote selectable">「${escapeHtml(m.text)}」</div>
+            <div class="t-sm">${escapeHtml(m.note || '（老師沒有補充說明）').replace(/\n/g, '<br>')}</div>
+          </div>
+        </div>`).join('')}
     </div>`;
 }
 

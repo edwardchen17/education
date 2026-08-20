@@ -187,6 +187,14 @@ export const attempts = {
       .eq('needs_grading', true)
       .order('created_at', { ascending: true })),
 
+  /** 已批改完成的寫作題，供管理者回頭修改分數（需求 9.7） */
+  gradedWriting: (limit = 20) =>
+    q(c => c.from('attempts').select('*')
+      .eq('needs_grading', false)
+      .in('qtype', ['essay', 'short'])
+      .order('created_at', { ascending: false })
+      .limit(limit)),
+
   /** 某學生某科的近期紀錄，用於難度評估與統計 */
   recent: (studentId, subject, limit = 40) =>
     q(c => c.from('attempts').select('*')

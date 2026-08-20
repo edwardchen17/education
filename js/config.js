@@ -33,4 +33,4 @@ export const LEVELS = {
 
 /* 每次部署都要往上調。畫面右下角會顯示這個號碼，
  * 如果看到的號碼不是最新的，代表瀏覽器還在用快取，需要強制重新載入。 */
-export const APP_VERSION = '0.5.1';
+export const APP_VERSION = '0.6.0';

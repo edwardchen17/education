@@ -19,15 +19,16 @@ import history from './screens/history.js';
 import admin from './screens/admin.js';
 import preview from './screens/preview.js';
 import diag from './screens/diag.js';
+import help from './screens/help.js';
 
 const app = document.getElementById('app');
 
 const routes = {
-  gate, students, home, lesson, result, history, admin, preview, diag
+  gate, students, home, lesson, result, history, admin, preview, diag, help
 };
 
-/** 不需要家庭驗證就能開的畫面 */
-const PUBLIC = new Set(['gate']);
+/** 不需要家庭驗證就能開的畫面。使用說明純靜態，斷線或還沒登入都能看。 */
+const PUBLIC = new Set(['gate', 'help']);
 
 let currentScreen = null;
 

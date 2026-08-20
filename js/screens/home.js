@@ -68,6 +68,7 @@ export default {
         <div class="card">
           <div class="row" style="flex-wrap:wrap;gap:8px">
             <button data-go="history">看以前的考卷</button>
+            <button data-go="help">怎麼用</button>
             <span class="grow"></span>
             <button data-go="students">換人</button>
           </div>

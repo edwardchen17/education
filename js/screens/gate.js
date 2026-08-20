@@ -23,10 +23,16 @@ export default {
             <button id="go" class="btn-primary grow">進入</button>
           </div>
 
+          <div class="row" style="margin-top:10px">
+            <button id="help" class="grow t-dim">第一次來？看怎麼用</button>
+          </div>
+
           <div id="msg" class="t-sm" style="margin-top:12px"></div>
           <div class="build-tag">版本 ${APP_VERSION}</div>
         </div>
       </div>`;
+
+    host.querySelector('#help').onclick = () => { location.hash = '#/help'; };
 
     const pw = host.querySelector('#pw');
     const msg = host.querySelector('#msg');

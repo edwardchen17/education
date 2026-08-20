@@ -281,7 +281,123 @@
   font-size: 12px;
 }
 
+/* ---------- 通用：毛玻璃列與資料列 ---------- */
+.glass {
+  background: linear-gradient(180deg, rgba(19, 27, 36, .96), rgba(19, 27, 36, .82));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.prow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.prow:last-child { border-bottom: none; }
+.prow > span { color: var(--dim); }
+
 /* ---------- 老師介面 ---------- */
+.admin-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 10px var(--pad) 0;
+}
+.tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 0 0;
+  scrollbar-width: thin;
+}
+.tab {
+  flex: 0 0 auto;
+  position: relative;
+  min-height: 36px;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--dim);
+  font-size: 14px;
+}
+.tab.on {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  background: rgba(77, 182, 172, .12);
+}
+.tab-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--warn);
+  color: #2a2000;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+/* ---------- 批改卡 ---------- */
+.grade-card { border-left: 3px solid var(--warn); }
+
+.essay-body {
+  border-left-color: var(--info);
+  max-height: 46vh;
+  overflow: auto;
+}
+.essay-body .passage-body { white-space: normal; }
+
+.marks { display: flex; flex-direction: column; gap: 8px; }
+.marks:not(:empty) { margin-top: 10px; }
+.mark-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(100, 181, 246, .07);
+}
+.mark-quote {
+  font-size: 13px;
+  color: #9ccdf8;
+  line-height: 1.6;
+  margin-bottom: 5px;
+}
+.mark-row input { min-height: 34px; font-size: 13px; }
+
+.rubric { display: flex; flex-direction: column; gap: 2px; }
+.rubric-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rubric-row:last-child { border-bottom: none; }
+.rubric-input {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.rubric-input input {
+  width: 68px;
+  min-height: 36px;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  font-size: 15px;
+}
+
 .admin-student {
   padding: 14px 0;
   border-bottom: 1px solid var(--line);
@@ -313,6 +429,27 @@
   flex: 0 0 auto;
 }
 .lockbox input { width: auto; min-height: auto; }
+
+/* ---------- 使用說明 ---------- */
+.help-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.help-step:last-child { border-bottom: none; }
+.help-n {
+  flex: 0 0 26px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent);
+  color: #06231f;
+  font-size: 13px;
+  font-weight: 700;
+}
+.help-title { font-size: 15px; margin-bottom: 3px; }
 
 /* ---------- 手機微調 ---------- */
 @media (max-width: 639px) {
