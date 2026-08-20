@@ -8,7 +8,10 @@
  */
 
 import { seeded, ri, shuffle } from '../core.js';
-import { DIFFICULTIES } from '../config/scoring.js';
+import { DIFFICULTIES, LESSON } from '../config/scoring.js';
+
+/** 一堂課的下限時長（需求 7.1）。低於此值會產生警告，提醒題庫需要補充。 */
+const LESSON_MIN_SECONDS = LESSON.minMinutes * 60;
 import { validateQuestion } from './validate.js';
 import mathG8 from './gen/math_g8.js';
 import mathG5 from './gen/math_g5.js';
@@ -65,6 +68,11 @@ export function generateOne(generator, difficulty, seed = ri(1, 2 ** 30)) {
 
 const staticCache = new Map();
 
+/** 各科目與程度對應的靜態題庫檔名。沒有列出的科目表示還沒有靜態題庫。 */
+export const STATIC_FILES = {
+  chinese: { g8: 'chinese_g8', g5: 'chinese_g5' }
+};
+
 /**
  * 載入靜態題庫檔。瀏覽器用 fetch，Node 測試可先用 injectStatic 注入。
  * @param {string} name 例如 'chinese_g8'
@@ -77,6 +85,21 @@ export async function loadStatic(name) {
   const list = Array.isArray(data) ? data : (data.questions || []);
   staticCache.set(name, list);
   return list;
+}
+
+/**
+ * 取得某科目某程度的靜態題庫。沒有對應檔案時回傳空陣列。
+ * 載入失敗時也回傳空陣列，讓課堂改用生成題撐過去，不要整堂課失敗。
+ */
+export async function loadPool(subject, level) {
+  const name = STATIC_FILES[subject]?.[level];
+  if (!name) return [];
+  try {
+    return await loadStatic(name);
+  } catch (err) {
+    console.warn('[bank] 靜態題庫載入失敗，改用生成題：', err.message);
+    return [];
+  }
 }
 
 /** 測試用：直接放入靜態題庫，避免 fetch */
@@ -145,24 +168,61 @@ export function pickQuestions(opts) {
     if (q) tryAdd(q, true);
   }
 
-  /* --- 第二步：用當前難度的新題填滿剩餘預算 --- */
+  /* --- 第二步：作文要刻意安排，不能靠隨機抽中 --- */
   const gens = generatorsFor({ subject, level, difficulty });
-  const statics = staticPool.filter(q =>
-    q.subject === subject &&
-    q.difficulty === difficulty &&
-    !exclude.has(keyOf(q))
-  );
+
+  const isWriting = q => q.type === 'essay' || q.type === 'short';
+  const mine = staticPool.filter(q => q.subject === subject && !exclude.has(keyOf(q)));
+  const essayPool = mine.filter(isWriting);
+  const itemPool = mine.filter(q => !isWriting(q));
+
+  let statics = itemPool.filter(q => q.difficulty === difficulty);
+
+  /* 靜態題庫是人工撰寫的，某個難度的題量可能不足。
+   * 若該難度的總時長撐不到預算的一半，就把其他難度一起納入，
+   * 否則國文這類科目會組不出一堂完整的課。 */
+  const available = statics.reduce((s, q) => s + q.est_seconds, 0);
+  if (available < budget * 0.5) statics = itemPool;
+
+  /* 作文佔掉大半預算，必須先決定這堂課要不要寫作，再用短題補滿剩下的時間
+   * （需求 7.2）。若讓作文和其他題目一起隨機抽，抽到作文時預算會瞬間爆掉。 */
+  const wantEssay = opts.includeEssay === undefined
+    ? (essayPool.length > 0 && rng() < 0.35)
+    : !!opts.includeEssay;
+
+  if (wantEssay) {
+    const cand = essayPool.filter(q => q.est_seconds <= budget * 0.9);
+    if (cand.length) tryAdd(cand[Math.floor(rng() * cand.length)]);
+  }
 
   const stopAt = budget * stopRatio;
-  let guard = 0;
+  let miss = 0;
 
-  while (seconds < stopAt && guard++ < 200) {
-    const useStatic = statics.length > 0 && (gens.length === 0 || rng() < 0.4);
+  while (seconds < stopAt && miss < 30) {
+    const useStatic = statics.length > 0 && (gens.length === 0 || rng() < 0.5);
     let q = null;
 
     if (useStatic) {
       const pool = statics.filter(x => !items.some(y => keyOf(y) === keyOf(x)));
-      if (pool.length) q = pool[Math.floor(rng() * pool.length)];
+      if (pool.length) {
+        const chosen = pool[Math.floor(rng() * pool.length)];
+
+        /* 同一篇文章的題目要連在一起出，否則同一段文章會在一堂課裡重複出現，
+         * 學生也得為每一題重讀一次。整組一起放入時允許跨難度，
+         * 讓同一篇文章上的題目由淺入深。 */
+        if (chosen.group) {
+          const siblings = mine
+            .filter(x => x.group === chosen.group && !items.some(y => keyOf(y) === keyOf(x)))
+            .slice(0, 3);
+          let added = 0;
+          for (const s of siblings) {
+            if (seconds + s.est_seconds > budget) break;
+            if (tryAdd(s)) added++;
+          }
+          if (added) { miss = 0; continue; }
+        }
+        q = chosen;
+      }
     }
     if (!q && gens.length) {
       const g = gens[Math.floor(rng() * gens.length)];
@@ -171,17 +231,27 @@ export function pickQuestions(opts) {
       } catch (err) {
         // 生成器出錯時記錄並跳過，不讓整堂課失敗（需求 5.2）
         warnings.push(`生成器 ${g.id} 出錯：${err.message}`);
+        miss++;
         continue;
       }
     }
-    if (!q) break;
+    if (!q) break;                       // 題庫抽乾了
 
-    // 超出上限就不要硬塞
+    /* 這一題塞不進剩餘預算時只是換一題，不能直接中止整堂課。
+     * 否則一抽到長題目，課堂就會停在很短的時長上。 */
     if (seconds + q.est_seconds > budget) {
-      if (items.length === 0) tryAdd(q);      // 至少要有一題
-      break;
+      if (items.length === 0 && tryAdd(q)) break;   // 至少要有一題
+      miss++;
+      continue;
     }
-    tryAdd(q);
+    if (tryAdd(q)) miss = 0; else miss++;
+  }
+
+  if (seconds < LESSON_MIN_SECONDS) {
+    warnings.push(
+      `這堂課只組出 ${seconds} 秒（低於 ${LESSON_MIN_SECONDS} 秒下限），` +
+      `${subject} 的題庫題量不足，建議補充題目。`
+    );
   }
 
   return { items, seconds, reviewSeconds, reviewCount, warnings };

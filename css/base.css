@@ -181,6 +181,28 @@ label { display: block; font-size: 13px; color: var(--dim); margin-bottom: 6px; 
 .banner-bad  { background: rgba(239, 83, 80, .12);  border-color: rgba(239, 83, 80, .4); }
 .banner-ok   { background: rgba(102, 187, 106, .12); border-color: rgba(102, 187, 106, .4); }
 
+/* ---------- 閱讀文章 ---------- */
+.passage {
+  background: rgba(10, 15, 21, .55);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 12px 14px;
+  margin: 10px 0;
+}
+.passage-head {
+  font-size: 14px;
+  color: var(--accent-2);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.passage-body {
+  font-family: "Noto Serif TC", "Source Han Serif TC", "PMingLiU", serif;
+  font-size: 1.02em;
+  line-height: 2;
+  color: var(--ink);
+  white-space: normal;
+}
+
 /* ---------- 版本標示 ----------
  * 一眼判斷瀏覽器是否還在用快取的舊版。 */
 .build-tag {

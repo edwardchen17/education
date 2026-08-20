@@ -10,14 +10,14 @@ import { answerDisplay } from '../engine/answer.js';
 import { subjectsFor } from '../config/subjects.js';
 import { DIFFICULTIES, DIFFICULTY_LABEL, maxScore } from '../config/scoring.js';
 import { topicLabel, topicChapter } from '../config/topics.js';
-import { pickQuestions, coverage } from '../bank/index.js';
+import { pickQuestions, coverage, loadPool, STATIC_FILES } from '../bank/index.js';
 
 const LEVELS = [
   { code: 'g8', label: '國二上（Bruce）' },
   { code: 'g5', label: '小五上（Melody）' }
 ];
 
-let state = { level: 'g8', subject: 'math', difficulty: 'advanced', seed: 1 };
+let state = { level: 'g8', subject: 'math', difficulty: 'advanced', seed: 1, essay: undefined };
 
 export default {
   render(host) {
@@ -59,10 +59,12 @@ function renderControls(host) {
     <div>
       <label>科目</label>
       <div class="row" style="flex-wrap:wrap;gap:8px">
-        ${subjects.map(s => `
-          <button data-subject="${s.code}" class="${state.subject === s.code ? 'btn-primary' : ''}">
-            ${s.label}${s.code === 'math' ? '' : ' <span class="t-dim">（尚無題庫）</span>'}
-          </button>`).join('')}
+        ${subjects.map(s => {
+          const ready = s.code === 'math' || !!STATIC_FILES[s.code]?.[state.level];
+          return `<button data-subject="${s.code}" class="${state.subject === s.code ? 'btn-primary' : ''}">
+            ${s.label}${ready ? '' : ' <span class="t-dim">（尚無題庫）</span>'}
+          </button>`;
+        }).join('')}
       </div>
     </div>
     <div>
@@ -74,11 +76,25 @@ function renderControls(host) {
           </button>`).join('')}
       </div>
     </div>
+    <div>
+      <label>作文</label>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button data-essay="auto" class="${state.essay === undefined ? 'btn-primary' : ''}">自動</button>
+        <button data-essay="yes" class="${state.essay === true ? 'btn-primary' : ''}">一定含作文</button>
+        <button data-essay="no" class="${state.essay === false ? 'btn-primary' : ''}">不含作文</button>
+      </div>
+    </div>
     <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:6px">
       <button id="again" class="btn-primary">換一批題目</button>
       <button id="showAll">全部展開解題邏輯</button>
       <button data-go="home">返回</button>
     </div>`;
+
+  box.querySelectorAll('[data-essay]').forEach(b => b.onclick = () => {
+    state.essay = b.dataset.essay === 'auto' ? undefined : b.dataset.essay === 'yes';
+    state.seed = ri(1, 1e9);
+    renderControls(host); build(host);
+  });
 
   box.querySelectorAll('[data-level]').forEach(b => b.onclick = () => {
     state.level = b.dataset.level; state.seed = ri(1, 1e9);
@@ -108,20 +124,26 @@ function renderCoverage(host) {
   host.querySelector('#cov').textContent = '題庫涵蓋　' + (parts.join('　/　') || '無');
 }
 
-function build(host) {
+async function build(host) {
   const out = host.querySelector('#result');
+  out.innerHTML = `<div class="loading"><div class="spinner"></div><div>組課中</div></div>`;
+
+  const staticPool = await loadPool(state.subject, state.level);
 
   const { items, seconds, reviewCount, warnings } = pickQuestions({
     subject: state.subject,
     level: state.level,
     difficulty: state.difficulty,
     budget: 1500,
+    staticPool,
+    includeEssay: state.essay,
     rng: makeRng(state.seed)
   });
 
   if (!items.length) {
     out.innerHTML = `<div class="card"><div class="banner banner-warn">
-      這個科目還沒有題庫。目前只有數學（國二與小五）已完成，其餘在後續任務。
+      這個科目還沒有題庫。目前完成的是數學與國文（國二、小五各三種難度），
+      其餘五科在任務 18。
     </div></div>`;
     return;
   }
@@ -151,7 +173,27 @@ function questionCard(q, no) {
     mc: '單選', mmc: '多選', fill: '填空', calc: '計算', short: '簡答', essay: '作文'
   }[q.type] || q.type;
 
-  let body = `<div class="stem selectable" style="font-size:1.05em;margin:8px 0 12px">
+  let body = '';
+
+  /* 閱讀題的文章。存在快照裡，因此日後複查考卷時內容不會變。 */
+  if (q.passage) {
+    body += `
+      <div class="passage selectable">
+        <div class="passage-head">${escapeHtml(q.passage.title)}　
+          <span class="t-dim">${escapeHtml(q.passage.author)}</span></div>
+        <div class="passage-body">${escapeHtml(q.passage.text).replace(/\n/g, '<br>')}</div>
+        <div class="t-dim" style="font-size:11px;margin-top:6px">${escapeHtml(q.passage.source)}</div>
+      </div>`;
+  }
+
+  if (q.type === 'essay') {
+    body += `<div class="passage selectable"><div class="passage-body">${
+      escapeHtml(q.prompt).replace(/\n/g, '<br>')}</div></div>
+      <div class="t-sm t-dim" style="margin-top:8px">最少 ${q.min_words} 字，由老師批改</div>`;
+    return wrapCard(q, no, typeLabel, body, rubricHtml(q));
+  }
+
+  body += `<div class="stem selectable" style="font-size:1.05em;margin:8px 0 12px">
     ${renderMath(q.stem)}</div>`;
 
   if (q.options) {
@@ -183,6 +225,10 @@ function questionCard(q, no) {
     rationale += `<div class="t-sm t-gold" style="margin-top:8px">答案：${renderMath(answerDisplay(q))}</div>`;
   }
 
+  return wrapCard(q, no, typeLabel, body, rationale);
+}
+
+function wrapCard(q, no, typeLabel, body, rationale) {
   return `
     <div class="card">
       <div class="row-between t-sm t-dim" style="flex-wrap:wrap;gap:6px">
@@ -193,9 +239,24 @@ function questionCard(q, no) {
       </div>
       ${body}
       <details style="margin-top:10px">
-        <summary style="cursor:pointer;color:var(--accent-2);font-size:14px">看解題邏輯</summary>
+        <summary style="cursor:pointer;color:var(--accent-2);font-size:14px">
+          ${q.type === 'essay' ? '看評分規準與範文' : '看解題邏輯'}</summary>
         <div style="margin-top:8px">${rationale}</div>
       </details>
+    </div>`;
+}
+
+/** 作文的評分規準與範文 */
+function rubricHtml(q) {
+  const rows = (q.rubric || []).map(r => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--line)">
+      <div class="t-gold" style="font-size:13px">${escapeHtml(r.item)}　${r.points} 分</div>
+      <div class="t-sm t-dim" style="margin-top:2px">${escapeHtml(r.desc)}</div>
+    </div>`).join('');
+  return rows + `
+    <div class="t-gold" style="margin-top:12px;font-size:13px">範文（學生交卷後才會看到）</div>
+    <div class="passage selectable" style="margin-top:6px">
+      <div class="passage-body">${escapeHtml(q.sample || '').replace(/\n/g, '<br>')}</div>
     </div>`;
 }
 
