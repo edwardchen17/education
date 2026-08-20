@@ -130,7 +130,7 @@ const fracAddSub = {
     }
 
     return fill({
-      stem: `計算下式，答案請化為最簡分數：<br>` +
+      stem: `計算下式，答案請化為最簡分數：\n` +
             `${fracToMath(f1)} ${plus ? '+' : '-'} ${fracToMath(f2)}`,
       answer: { accept, exact: true },
       steps: [

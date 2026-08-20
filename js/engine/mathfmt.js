@@ -146,6 +146,10 @@ function convert(s) {
       if (g) { flush(); out += `<sub>${convert(g.body)}</sub>`; i = g.next; continue; }
     }
 
+    /* 換行。題幹要斷行時用 \n，不能直接寫 <br>，
+     * 因為這裡會把所有文字做 HTML 轉義，標籤會變成可見的字。 */
+    if (ch === '\n') { flush(); out += '<br>'; i++; continue; }
+
     plain += ch;
     i++;
   }

@@ -51,6 +51,18 @@ export function validateQuestion(q, where = '') {
   const stemText = q.stem ?? q.prompt;
   if (!stemText || !String(stemText).trim()) at('題幹為空');
 
+  /* 題目文字會經過 HTML 轉義後才顯示，寫死的標籤會變成可見的字。
+   * 需要斷行請用 \n。 */
+  const rawTag = /<\s*\/?\s*[A-Za-z][^>]*>/;
+  if (stemText && rawTag.test(String(stemText))) {
+    at('題幹含有 HTML 標籤，會被原樣顯示出來。斷行請改用 \\n');
+  }
+  (q.options || []).forEach((o, i) => {
+    const tag = `選項 ${'ABCDEFGH'[i] || i}`;
+    if (o && rawTag.test(String(o.text ?? ''))) at(`${tag} 的內容含有 HTML 標籤`);
+    if (o && rawTag.test(String(o.why ?? ''))) at(`${tag} 的解析含有 HTML 標籤`);
+  });
+
   /* ---- 選擇題 ---- */
   if (q.type === 'mc' || q.type === 'mmc') {
     if (!Array.isArray(q.options) || q.options.length < 2) {

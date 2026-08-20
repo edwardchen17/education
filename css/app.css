@@ -162,10 +162,37 @@
 /* 檢討畫面的靜態選項 */
 .opt-static { cursor: default; }
 .opt-static:hover { background: var(--panel-2); border-color: var(--line-2); }
-.opt-tag { color: var(--dim); font-size: 12px; flex: 0 0 auto; }
-.opt.right { border-color: var(--ok); }
+
+.opt-tags {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+.pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.pill-mine  { background: rgba(100,181,246,.22); color: #9ccdf8; }
+.pill-right { background: rgba(102,187,106,.22); color: #9adb9d; }
+
+/* 正確答案：綠色左邊條 */
+.opt.right {
+  border-color: rgba(102,187,106,.5);
+  box-shadow: inset 4px 0 0 var(--ok);
+}
 .opt.right .opt-key { background: var(--ok); color: #06231f; border-color: transparent; }
-.opt.mine { background: rgba(100,181,246,.12); }
+
+/* 你選的：藍色底 */
+.opt.mine {
+  background: rgba(100,181,246,.13);
+  border-color: rgba(100,181,246,.45);
+}
+/* 選對了：綠底加綠條 */
 .opt.mine.right { background: rgba(102,187,106,.16); }
 
 /* ---------- 填答 ---------- */
@@ -192,6 +219,67 @@
   font-family: ui-monospace, monospace;
 }
 .score-sub { color: var(--dim); font-size: 14px; margin-top: 6px; }
+
+/* ---------- 已選標示 ---------- */
+.opt-check {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--accent);
+  opacity: 0;
+  font-weight: 700;
+}
+.opt.on .opt-check { opacity: 1; }
+.opt.on { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* 題號按鈕上直接顯示選了哪個代號 */
+.navdot { display: grid; place-items: center; line-height: 1.05; }
+.dot-n { font-size: 11px; }
+.dot-a { font-size: 12px; font-weight: 700; color: var(--accent-2); }
+.navdot.done .dot-n { color: var(--ink-2); }
+
+/* ---------- 交卷前確認清單 ---------- */
+.sheet {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 12, .72);
+  z-index: 80;
+  display: grid;
+  place-items: end center;
+  padding: 12px;
+  overflow: auto;
+}
+@media (min-width: 640px) {
+  .sheet { place-items: center; }
+}
+.sheet-box {
+  width: 100%;
+  max-width: 520px;
+  max-height: 88vh;
+  overflow: auto;
+}
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 46vh;
+  overflow: auto;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 10px;
+  min-height: 40px;
+  font-size: 14px;
+}
+.check-n {
+  flex: 0 0 24px;
+  text-align: right;
+  color: var(--dim);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
 
 /* ---------- 老師介面 ---------- */
 .admin-student {

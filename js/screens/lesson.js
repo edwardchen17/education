@@ -5,7 +5,7 @@
  */
 
 import { escapeHtml, fmtDuration, countWords } from '../core.js';
-import { renderMath } from '../engine/mathfmt.js';
+import { renderMath, mathToPlain } from '../engine/mathfmt.js';
 import { maxScore, DIFFICULTY_LABEL } from '../config/scoring.js';
 import { subjectLabel } from '../config/subjects.js';
 import { topicLabel } from '../config/topics.js';
@@ -136,11 +136,11 @@ async function currentStudent() {
 /* 繪製                                                                */
 /* ------------------------------------------------------------------ */
 
-function paint(host) {
+function paint(host, opts = {}) {
   const q = S.items[S.index];
   const seq = S.index + 1;
   const total = S.items.length;
-  const answered = Object.keys(S.answers).filter(k => hasAnswer(S.answers[k])).length;
+  const answered = countAnswered();
 
   host.innerHTML = `
     <div class="lesson-top glass">
@@ -182,17 +182,69 @@ function paint(host) {
           <button id="reveal" ${S.revealed.includes(seq) ? 'disabled' : ''}>看解題邏輯</button>
           <button id="submit" class="btn-primary">交卷</button>
         </div>
-        <div class="t-sm t-dim" style="margin-top:10px">
-          已作答 ${answered} / ${total} 題
-          ${answered < total ? '　<span class="t-warn">還有題目沒寫</span>' : ''}
-        </div>
+        <div id="progress" class="t-sm t-dim" style="margin-top:10px">${progressText(answered, total)}</div>
       </div>
 
       <div id="rationale"></div>
     </div>`;
 
   bind(host, q, seq);
-  if (S.revealed.includes(seq)) showRationale(host, q);
+  if (S.revealed.includes(seq)) showRationale(host, q, opts.scrollToRationale);
+}
+
+const countAnswered = () =>
+  S.items.reduce((n, _, i) => n + (hasAnswer(S.answers[i + 1]) ? 1 : 0), 0);
+
+function progressText(answered, total) {
+  return `已作答 ${answered} / ${total} 題` +
+    (answered < total ? '　<span class="t-warn">還有題目沒寫</span>' : '');
+}
+
+/**
+ * 原地更新選擇狀態，不重繪整頁。
+ *
+ * 這一點很重要：先前每次點選都重建整個 innerHTML，
+ * 瀏覽器的捲動位置會跳回頂端，使用者以為點到的和實際點到的可能不同。
+ */
+function applySelection(host, q, seq) {
+  const cur = S.answers[seq];
+  const chosen = q.type === 'mc'
+    ? (cur === undefined ? -1 : Number(cur))
+    : (Array.isArray(cur) ? cur.map(Number) : []);
+
+  host.querySelectorAll('[data-opt]').forEach(b => {
+    const i = Number(b.dataset.opt);
+    const on = q.type === 'mc' ? chosen === i : chosen.includes(i);
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+
+  refreshDot(host, seq);
+  const prog = host.querySelector('#progress');
+  if (prog) prog.innerHTML = progressText(countAnswered(), S.items.length);
+}
+
+/** 更新單一題號按鈕的狀態與標示的答案代號 */
+function refreshDot(host, seq) {
+  const dot = host.querySelector(`[data-jump="${seq - 1}"]`);
+  if (!dot) return;
+  const q = S.items[seq - 1];
+  dot.classList.toggle('done', hasAnswer(S.answers[seq]));
+  dot.classList.toggle('peeked', S.revealed.includes(seq));
+  dot.innerHTML = dotLabel(q, seq);
+}
+
+/** 題號按鈕上顯示的內容。選擇題會直接顯示選了哪個代號，方便自己核對。 */
+function dotLabel(q, seq) {
+  const cur = S.answers[seq];
+  if (q.type === 'mc' && cur !== undefined && cur !== '') {
+    return `<span class="dot-n">${seq}</span><span class="dot-a">${LETTERS[Number(cur)] || '?'}</span>`;
+  }
+  if (q.type === 'mmc' && Array.isArray(cur) && cur.length) {
+    return `<span class="dot-n">${seq}</span><span class="dot-a">${
+      cur.map(i => LETTERS[Number(i)] || '?').join('')}</span>`;
+  }
+  return `<span class="dot-n">${seq}</span>`;
 }
 
 function navHtml() {
@@ -204,7 +256,7 @@ function navHtml() {
       hasAnswer(S.answers[seq]) ? 'done' : '',
       S.revealed.includes(seq) ? 'peeked' : ''
     ].filter(Boolean).join(' ');
-    return `<button class="${cls}" data-jump="${i}" title="第 ${seq} 題">${seq}</button>`;
+    return `<button class="${cls}" data-jump="${i}" title="第 ${seq} 題">${dotLabel(q, seq)}</button>`;
   }).join('');
 }
 
@@ -235,9 +287,11 @@ function inputHtml(q, seq) {
       : (Array.isArray(cur) ? cur.map(Number) : []);
     return `<div class="opts">${q.options.map((o, i) => {
       const on = q.type === 'mc' ? chosen === i : chosen.includes(i);
-      return `<button class="opt ${on ? 'on' : ''}" data-opt="${i}">
+      return `<button class="opt ${on ? 'on' : ''}" data-opt="${i}"
+                      aria-pressed="${on ? 'true' : 'false'}">
         <span class="opt-key">${LETTERS[i]}</span>
         <span class="opt-text selectable">${renderMath(o.text)}</span>
+        <span class="opt-check">已選</span>
       </button>`;
     }).join('')}
     ${q.type === 'mmc' ? '<div class="t-sm t-dim" style="margin-top:8px">多選題，可以選多個，必須全對才給分。</div>' : ''}
@@ -298,12 +352,13 @@ function bind(host, q, seq) {
     );
     if (!okToPeek) return;
     S.revealed.push(seq);
-    save(); paint(host);
+    save();
+    paint(host, { scrollToRationale: true });
   };
 
-  $('submit').onclick = () => doSubmit(host);
+  $('submit').onclick = () => confirmSheet(host);
 
-  /* 選擇題 */
+  /* 選擇題。刻意只做原地更新，不重繪整頁，避免捲動位置跳掉造成誤觸。 */
   host.querySelectorAll('[data-opt]').forEach(b => b.onclick = () => {
     const i = Number(b.dataset.opt);
     if (q.type === 'mc') {
@@ -313,7 +368,8 @@ function bind(host, q, seq) {
       set.has(i) ? set.delete(i) : set.add(i);
       S.answers[seq] = [...set].sort((a, b) => a - b);
     }
-    save(); paint(host);
+    save();
+    applySelection(host, q, seq);
   });
 
   /* 填空、計算、作文 */
@@ -334,7 +390,7 @@ function bind(host, q, seq) {
   }
 }
 
-function showRationale(host, q) {
+function showRationale(host, q, doScroll) {
   const box = host.querySelector('#rationale');
   box.innerHTML = `
     <div class="card">
@@ -344,7 +400,8 @@ function showRationale(host, q) {
         這一題已標記為看過解答，不計分。之後會再出一次同類型的題目讓你練。
       </div>
     </div>`;
-  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // 只有剛按下「看解題邏輯」時才捲動，否則每次重繪都會把畫面拉走
+  if (doScroll) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function rationaleBody(q) {
@@ -379,17 +436,84 @@ function rationaleBody(q) {
 /* 交卷                                                                */
 /* ------------------------------------------------------------------ */
 
-async function doSubmit(host) {
+/**
+ * 交卷前的確認清單。
+ *
+ * 逐題列出系統記錄到的答案，讓學生在交卷前自己核對一次。
+ * 這樣萬一畫面上選的和記錄的不一致，在交卷前就會被發現。
+ */
+function confirmSheet(host) {
   if (S.submitting) return;
 
   const total = S.items.length;
-  const answered = Object.keys(S.answers).filter(k => hasAnswer(S.answers[k])).length;
-  if (answered < total) {
-    if (!confirm(`還有 ${total - answered} 題沒有作答，沒寫的會算錯。\n\n確定要交卷嗎？`)) return;
-  } else if (!confirm('確定要交卷嗎？交卷之後就不能修改答案了。')) {
-    return;
-  }
+  const answered = countAnswered();
 
+  const rows = S.items.map((q, i) => {
+    const seq = i + 1;
+    const cur = S.answers[seq];
+    const peeked = S.revealed.includes(seq);
+
+    let shown, cls;
+    if (!hasAnswer(cur)) {
+      shown = '沒有作答'; cls = 't-bad';
+    } else if (q.type === 'mc') {
+      const idx = Number(cur);
+      shown = `(${LETTERS[idx]}) ${plain(q.options[idx]?.text)}`; cls = 't-ok';
+    } else if (q.type === 'mmc') {
+      shown = cur.map(x => `(${LETTERS[Number(x)]})`).join(' '); cls = 't-ok';
+    } else if (q.type === 'essay' || q.type === 'short') {
+      shown = `寫了 ${countWords(cur)} 字`; cls = 't-ok';
+    } else {
+      shown = String(cur); cls = 't-ok';
+    }
+
+    return `
+      <button class="check-row" data-goto="${i}">
+        <span class="check-n">${seq}</span>
+        <span class="grow ${cls}">${escapeHtml(shown)}</span>
+        ${peeked ? '<span class="t-warn t-sm">看過解答</span>' : ''}
+      </button>`;
+  }).join('');
+
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = `
+    <div class="sheet-box card">
+      <div class="card-title">交卷前先確認一下</div>
+      <div class="t-sm t-dim" style="margin-bottom:10px">
+        下面是系統記錄到的答案。如果有哪一題和你想選的不一樣，
+        點那一列就會跳回去改。
+      </div>
+      ${answered < total ? `<div class="banner banner-warn" style="margin-bottom:10px">
+        有 ${total - answered} 題沒有作答，沒寫的會算錯。</div>` : ''}
+      <div class="check-list">${rows}</div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:14px">
+        <button id="reallySubmit" class="btn-primary grow">沒問題，交卷</button>
+        <button id="cancelSubmit">再檢查一下</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(sheet);
+
+  const close = () => sheet.remove();
+  sheet.querySelector('#cancelSubmit').onclick = close;
+  sheet.onclick = e => { if (e.target === sheet) close(); };
+  sheet.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => {
+    S.index = Number(b.dataset.goto);
+    close();
+    save();
+    paint(host);
+  });
+  sheet.querySelector('#reallySubmit').onclick = () => { close(); doSubmit(host); };
+}
+
+/** 把數學標記拿掉，用於確認清單的純文字顯示 */
+function plain(text) {
+  return mathToPlain(String(text ?? '')).slice(0, 40);
+}
+
+async function doSubmit(host) {
+  if (S.submitting) return;
   S.submitting = true;
   stopTicking();
 

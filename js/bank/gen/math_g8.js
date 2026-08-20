@@ -48,22 +48,29 @@ const multFormula = {
     const correctText = polyToMath(coeffs);
     const [c0, c1, c2] = [coeffs[0] ?? 0, coeffs[1] ?? 0, coeffs[2] ?? 0];
 
-    const wrong = pickWrong(correctText, [
-      { text: polyToMath([c0, 0, c2]),
+    /* 每個干擾項都帶上自己代表的多項式係數（chk），
+     * 讓 verify() 能確認沒有任何干擾項在數學上等於正解。 */
+    const cands = [
+      { c: [c0, 0, c2],
         why: '漏掉了中間項。展開平方不是把每一項各自平方，還有 2AB 這一項。' },
-      { text: polyToMath([c0, c1 / 2 || 1, c2]),
+      { c: [c0, Math.round(c1 / 2) || 1, c2],
         why: '中間項忘記乘以 2。交叉相乘會出現兩次，所以係數是 2AB 而不是 AB。' },
-      { text: polyToMath([-c0, c1, c2]),
+      { c: [-c0, c1, c2],
         why: '常數項的正負號錯了。任何數平方後都是正的。' },
-      { text: polyToMath([c0, -c1, c2]),
+      { c: [c0, -c1, c2],
         why: '中間項的正負號錯了。請對照括號內第二項的符號。' },
-      { text: polyToMath([c0, c1, c2 + 1]),
+      { c: [c0, c1, c2 + 1],
         why: '最高次項的係數算錯了，應該是括號內第一項係數的平方。' }
-    ]);
+    ]
+      // 先剔除數學上等於正解的候選，再交給 pickWrong 處理文字重複
+      .filter(x => !polyEq(x.c, coeffs))
+      .map(x => ({ text: polyToMath(x.c), why: x.why, chk: { coeffs: x.c } }));
+
+    const wrong = pickWrong(correctText, cands);
 
     return mc(rng, {
-      stem: `展開下列各式：<br>${left}`,
-      correct: { text: correctText, why },
+      stem: `展開下列各式：\n${left}`,
+      correct: { text: correctText, why, chk: { coeffs } },
       wrong,
       topic: this.topic, subject: SUB, difficulty,
       est: difficulty === 'basic' ? 60 : 80,
@@ -71,7 +78,7 @@ const multFormula = {
     });
   },
 
-  /** 驗算：用摺積重算係數，並在多個點代值比較 */
+  /** 驗算：用摺積重算係數，並確認沒有任何干擾項在數學上等於正解 */
   verify(q) {
     const { kind, a, b, coeffs } = q.gen.check;
     const factors = kind === 'diff' ? [[b, a], [-b, a]]
@@ -80,9 +87,13 @@ const multFormula = {
     const byConvolution = polyMul(factors[0], factors[1]);
     if (!polyEq(byConvolution, coeffs)) return false;
     if (!polyIdentical(byConvolution, coeffs)) return false;
-    // 正解選項的文字必須等於這組係數的標準寫法
+
     const correct = q.options.find(o => o.correct);
-    return correct && correct.text === polyToMath(coeffs);
+    if (!correct || correct.text !== polyToMath(coeffs)) return false;
+
+    // 沒有任何錯誤選項可以等於正解
+    return q.options.filter(o => !o.correct)
+      .every(o => o.chk && !polyIdentical(o.chk.coeffs, coeffs));
   }
 };
 
@@ -113,26 +124,43 @@ const factorCommon = {
     const original = polyMul(factorCoeffs, innerCoeffs);
 
     const xPart = p === 0 ? '' : p === 1 ? 'x' : `x^{${p}}`;
+    const xPow = Array(p).fill(0).concat([1]);
     const innerText = polyToMath(innerCoeffs);
     const correctText = `${g}${xPart}(${innerText})`;
 
-    const wrong = pickWrong(correctText, [
-      { text: `${g}(${polyToMath(polyMul(Array(p).fill(0).concat([1]), innerCoeffs))})`,
-        why: `只提出了數字 ${g}，忘記把 ${xPart} 也提出來。公因式要把數字和文字都取到最大。` },
-      { text: `${xPart}(${polyToMath(polyScaleLocal(innerCoeffs, g))})`,
-        why: `只提出了 ${xPart}，忘記數字部分還有公因數 ${g}。` },
-      { text: `${g * 1}${xPart}(${polyToMath(polyScaleLocal(innerCoeffs, 2))})`,
-        why: '括號內的係數算錯了。把答案乘開來檢查，應該要還原成原式。' },
-      { text: `${Math.max(2, Math.floor(g / 2))}${xPart}(${polyToMath(polyScaleLocal(innerCoeffs, g / Math.max(2, Math.floor(g / 2))))})`,
-        why: '提出的公因數不是最大的，括號內還可以再提出公因數。' }
-    ]);
+    /* 「只提出數字」與「只提出 x」這兩個干擾項乘開後確實等於原式，
+     * 但它們沒有把公因式提到最大，在因式分解的規則下是不完整的答案。
+     * 這是有教學價值的干擾項，所以題幹必須明確要求「最大公因式」。
+     * chk.full 標示這個選項是否已分解到底，verify() 會據此檢查。 */
+    const numOnlyInner = polyMul(xPow, innerCoeffs);
+    const xOnlyInner = innerCoeffs.map(c => c * g);
+
+    const cands = [
+      { text: `${g}(${polyToMath(numOnlyInner)})`,
+        chk: { coeffs: polyMul([g], numOnlyInner), full: false },
+        why: `只提出了數字 ${g}，忘記把 ${xPart} 也提出來。乘開來確實等於原式，` +
+             `但括號裡還有共同的 ${xPart} 可以提出，沒有分解到底。` },
+      { text: `${xPart}(${polyToMath(xOnlyInner)})`,
+        chk: { coeffs: polyMul(xPow, xOnlyInner), full: false },
+        why: `只提出了 ${xPart}，忘記數字部分還有公因數 ${g}。同樣沒有分解到底。` },
+      { text: `${g}${xPart}(${polyToMath(innerCoeffs.map(c => c * 2))})`,
+        chk: { coeffs: polyMul(polyMul([g], xPow), innerCoeffs.map(c => c * 2)), full: false },
+        why: '括號內的係數算錯了。把答案乘開來檢查，並不等於原式。' },
+      { text: `${g * 2}${xPart}(${polyToMath(innerCoeffs)})`,
+        chk: { coeffs: polyMul(polyMul([g * 2], xPow), innerCoeffs), full: false },
+        why: `提出的數字太大了。乘開後每一項都會變成原式的兩倍。` }
+    ];
+
+    const wrong = pickWrong(correctText, cands);
 
     return mc(rng, {
-      stem: `將下式因式分解（提出公因式）：<br>${polyToMath(original)}`,
+      // 題幹必須點明「最大」，否則只提出數字的答案也說得過去
+      stem: `將下式因式分解，要提出最大公因式：\n${polyToMath(original)}`,
       correct: {
         text: correctText,
+        chk: { coeffs: polyMul(polyMul([g], xPow), innerCoeffs), full: true },
         why: `各項係數的最大公因數是 ${g}，而每一項都至少含有 ${xPart || '1'}，` +
-             `所以公因式為 ${g}${xPart}。提出後括號內的係數已經互質。`
+             `所以最大公因式為 ${g}${xPart}。提出後括號內的係數已經互質，無法再分解。`
       },
       wrong,
       topic: this.topic, subject: SUB, difficulty,
@@ -141,20 +169,33 @@ const factorCommon = {
     });
   },
 
-  /** 驗算：把因式乘回去，必須還原成原式 */
+  /**
+   * 驗算：
+   *   1. 正解乘回去必須還原成原式，且已分解到底
+   *   2. 任何乘開後等於原式的干擾項，都必須是「沒分解到底」的那種
+   */
   verify(q) {
     const { original, factorCoeffs, innerCoeffs, g } = q.gen.check;
     const back = polyMul(factorCoeffs, innerCoeffs);
     if (!polyEq(back, original)) return false;
     if (!polyIdentical(back, original)) return false;
+
     // 公因式必須是最大的：括號內係數的最大公因數要等於 1
     const nz = innerCoeffs.filter(c => c !== 0);
     const innerGcd = nz.length === 1 ? Math.abs(nz[0]) : nz.reduce((x, y) => gcdBrute(x, y));
-    return innerGcd === 1 && g >= 2;
+    if (innerGcd !== 1 || g < 2) return false;
+
+    const correct = q.options.find(o => o.correct);
+    if (!correct?.chk?.full) return false;
+
+    for (const o of q.options) {
+      if (o.correct || !o.chk) continue;
+      // 等於原式的干擾項只能是「沒分解到底」，不能是另一個完整答案
+      if (polyIdentical(o.chk.coeffs, original) && o.chk.full) return false;
+    }
+    return true;
   }
 };
-
-function polyScaleLocal(a, k) { return a.map(c => Math.round(c * k)); }
 
 /* ================================================================== */
 /* 3. 利用乘法公式因式分解                                             */
@@ -191,23 +232,37 @@ const factorFormula = {
             `A^{2} - B^{2} = (A+B)(A-B)。`;
     }
 
-    const wrong = pickWrong(correctText, [
-      { text: `(${lin(a, b)})^{2}`,
-        why: '這是完全平方式的結果。原式若為兩項相減，應該用平方差公式，答案會是兩個不同的括號。' },
-      { text: `(${lin(a, b)})(${lin(a, b)})`,
-        why: '兩個括號完全相同代表這是完全平方，乘開後會多出中間項，與原式不符。' },
-      { text: `(${lin(a, -b)})^{2}`,
-        why: '乘開後中間項會是負的，與原式的中間項不符。' },
-      { text: `(${lin(a * a, b * b)})`,
-        why: '把係數各自開平方後直接寫成一個括號是錯的，因式分解必須是兩個因式相乘。' },
-      { text: `${a}(${lin(1, b)})(${lin(1, -b)})`,
-        why: '把首項係數提到括號外面時沒有處理好，乘開後首項係數會變成 ' +
-             `${a} 而不是 ${a * a}。` }
-    ]);
+    /* 每個干擾項都要附上它展開後的多項式，才能確認沒有任何一個
+     * 在數學上等於原式。
+     *
+     * 特別注意：(x+b)(x+b) 與 (x+b)^2 是同一個式子，不能拿來當干擾項。
+     * 以前這裡放了這個選項，導致學生選了正確答案卻被判錯。 */
+    const cands = [
+      { text: `(${lin(a, b)})^{2}`, factors: [[b, a], [b, a]],
+        why: '這是完全平方式的結果。原式的兩項是相減，應該用平方差公式，' +
+             '答案會是兩個符號相反的括號相乘。' },
+      { text: `(${lin(a, -b)})^{2}`, factors: [[-b, a], [-b, a]],
+        why: '乘開後會多出一個負的中間項，與原式不符。' },
+      { text: `(${lin(a, b)})(${lin(a, b * 2)})`, factors: [[b, a], [b * 2, a]],
+        why: `乘開後常數項會變成 ${b * b * 2}，與原式的 ${b * b} 不符。` },
+      { text: `(${lin(a * a, b * b)})`, factors: null,
+        why: '把係數各自開平方後寫成一個括號是錯的，因式分解的結果必須是兩個因式相乘。' },
+      { text: `${a}(${lin(1, b)})(${lin(1, -b)})`, factors: [[b, 1], [-b, 1], [0, a]],
+        why: `把首項係數提到括號外面時處理錯了，乘開後首項係數會是 ${a} 而不是 ${a * a}。` }
+    ]
+      .map(x => ({
+        text: x.text,
+        why: x.why,
+        chk: { coeffs: x.factors ? x.factors.reduce((acc, f) => polyMul(acc, f), [1]) : null }
+      }))
+      // 剔除任何在數學上等於原式的候選
+      .filter(x => !x.chk.coeffs || !polyIdentical(x.chk.coeffs, original));
+
+    const wrong = pickWrong(correctText, cands);
 
     return mc(rng, {
-      stem: `將下式因式分解：<br>${polyToMath(original)}`,
-      correct: { text: correctText, why },
+      stem: `將下式因式分解：\n${polyToMath(original)}`,
+      correct: { text: correctText, why, chk: { coeffs: original } },
       wrong,
       topic: this.topic, subject: SUB, difficulty,
       est: difficulty === 'basic' ? 70 : 90,
@@ -215,10 +270,14 @@ const factorFormula = {
     });
   },
 
+  /** 驗算：因式乘回去要還原成原式，且沒有任何干擾項等於原式 */
   verify(q) {
     const { original, f1, f2 } = q.gen.check;
     const back = polyMul(f1, f2);
-    return polyEq(back, original) && polyIdentical(back, original);
+    if (!polyEq(back, original) || !polyIdentical(back, original)) return false;
+
+    return q.options.filter(o => !o.correct).every(o =>
+      !o.chk?.coeffs || !polyIdentical(o.chk.coeffs, original));
   }
 };
 
@@ -270,7 +329,7 @@ const factorCross = {
     ].filter(Boolean));
 
     return mc(rng, {
-      stem: `將下式因式分解：<br>${polyToMath(original)}`,
+      stem: `將下式因式分解：\n${polyToMath(original)}`,
       correct: {
         text: correctText,
         why: `要找兩個數相乘為 ${c}、相加為 ${b}，這兩個數是 ${p} 與 ${q}，` +
@@ -342,7 +401,7 @@ const sqrtSimplify = {
     ]);
 
     return mc(rng, {
-      stem: `化簡下式（根號內要化到最簡）：<br>${m.sqrt(n)}`,
+      stem: `化簡下式（根號內要化到最簡）：\n${m.sqrt(n)}`,
       correct: {
         text: correctText,
         why: `${n} = ${k}^{2} \\times ${mm}，把完全平方因數 ${k * k} 開出來得 ${k}，` +
@@ -469,7 +528,7 @@ const sqrtOperation = {
     ]);
 
     return mc(rng, {
-      stem: `計算並化到最簡：<br>${m.ksqrt(k1, mm)}${m.times}${m.sqrt(m2)}`,
+      stem: `計算並化到最簡：\n${m.ksqrt(k1, mm)}${m.times}${m.sqrt(m2)}`,
       correct: {
         text: correctText,
         why: `\\sqrt{${mm}} \\times \\sqrt{${m2}} = \\sqrt{${prod}}` +
@@ -597,7 +656,7 @@ const quadFactoring = {
     ]);
 
     return mc(rng, {
-      stem: `解一元二次方程式：<br>${eq}`,
+      stem: `解一元二次方程式：\n${eq}`,
       correct: {
         text: correctText,
         why: `因式分解得 ${factorText(-r1)}${factorText(-r2)} = 0。` +

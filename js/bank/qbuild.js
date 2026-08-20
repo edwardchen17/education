@@ -21,9 +21,12 @@ export const LETTERS = 'ABCDEFGH';
  *   gen         { id, seed, check? } 生成資訊與驗算資料
  */
 export function mc(rng, spec) {
+  /* chk 是選項的結構化驗算資料（例如這個選項展開後的多項式係數）。
+   * 它會隨著選項一起被打亂，因此 verify() 可以逐一檢查每個選項，
+   * 抓出「寫法不同但數學上等價」的假干擾項。 */
   const opts = [
-    { text: spec.correct.text, why: spec.correct.why, correct: true },
-    ...spec.wrong.map(w => ({ text: w.text, why: w.why, correct: false }))
+    { text: spec.correct.text, why: spec.correct.why, correct: true, ...pickChk(spec.correct) },
+    ...spec.wrong.map(w => ({ text: w.text, why: w.why, correct: false, ...pickChk(w) }))
   ];
   shuffle(opts, rng);
   return base(spec, {
@@ -36,8 +39,8 @@ export function mc(rng, spec) {
 /** 多選題。correct 為陣列。 */
 export function mmc(rng, spec) {
   const opts = [
-    ...spec.correct.map(c => ({ text: c.text, why: c.why, correct: true })),
-    ...spec.wrong.map(w => ({ text: w.text, why: w.why, correct: false }))
+    ...spec.correct.map(c => ({ text: c.text, why: c.why, correct: true, ...pickChk(c) })),
+    ...spec.wrong.map(w => ({ text: w.text, why: w.why, correct: false, ...pickChk(w) }))
   ];
   shuffle(opts, rng);
   return base(spec, {
@@ -179,3 +182,5 @@ export function pickWrong(correctText, candidates, n = 3) {
 }
 
 const norm = s => String(s).replace(/\s+/g, '');
+
+const pickChk = spec => (spec.chk === undefined ? {} : { chk: spec.chk });

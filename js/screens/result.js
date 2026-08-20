@@ -152,7 +152,10 @@ function answerBlock(r, q) {
       return `<div class="${cls}">
         <span class="opt-key">${LETTERS[i]}</span>
         <span class="opt-text selectable">${renderMath(o.text)}</span>
-        <span class="opt-tag">${chosen ? '你選的' : ''}${o.correct ? '　成立' : ''}</span>
+        <span class="opt-tags">
+          ${chosen ? '<span class="pill pill-mine">你選的</span>' : ''}
+          ${o.correct ? '<span class="pill pill-right">正確答案</span>' : ''}
+        </span>
       </div>`;
     }).join('')}</div>`;
   }
