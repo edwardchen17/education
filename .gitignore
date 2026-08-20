@@ -1,0 +1,17 @@
+# 作業系統雜檔
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 編輯器
+.vscode/
+.idea/
+*.swp
+
+# 本機測試產出
+test/out/
+*.log
+
+# 自備音檔（版權考量，不進版控）
+assets/music/*
+!assets/music/.gitkeep

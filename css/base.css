@@ -1,0 +1,206 @@
+/* ===== base.css — 基礎主題與版面 ===== */
+
+:root {
+  /* 底色與面板 */
+  --bg:        #0e141b;
+  --bg-2:      #131b24;
+  --panel:     rgba(24, 33, 43, .86);
+  --panel-2:   rgba(30, 41, 53, .92);
+  --line:      rgba(148, 178, 202, .18);
+  --line-2:    rgba(148, 178, 202, .32);
+
+  /* 文字 */
+  --ink:       #e8eef6;
+  --ink-2:     #b8c6d6;
+  --dim:       #7e8fa3;
+
+  /* 語意色 */
+  --accent:    #4db6ac;   /* 主色：青 */
+  --accent-2:  #7fd4cb;
+  --gold:      #ffb74d;   /* 積分、勳章 */
+  --ok:        #66bb6a;   /* 答對 */
+  --bad:       #ef5350;   /* 答錯 */
+  --warn:      #ffca28;   /* 待批改、提示 */
+  --info:      #64b5f6;
+
+  /* 科目色 */
+  --sub-chinese: #ef8a5a;
+  --sub-english: #64b5f6;
+  --sub-math:    #4db6ac;
+  --sub-science: #ba9ae0;
+  --sub-bio:     #81c784;
+  --sub-social:  #ffb74d;
+
+  --radius:    12px;
+  --radius-sm: 8px;
+  --shadow:    0 8px 28px rgba(0, 0, 0, .45);
+  --pad:       16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 題目與解析區允許選取，其餘不允許，避免小孩誤拖曳 */
+body { user-select: none; }
+.selectable, .selectable * { user-select: text; }
+
+#app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 版面容器 ---------- */
+.wrap {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--pad);
+}
+
+.screen { flex: 1; display: none; }
+.screen.active { display: block; }
+
+/* ---------- 面板 ---------- */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--pad);
+}
+
+.card + .card { margin-top: 12px; }
+
+.card-title {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--accent-2);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---------- 按鈕 ---------- */
+button, .btn {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background .14s, border-color .14s, transform .08s;
+  min-height: 44px;               /* 觸控目標最小尺寸 */
+}
+button:hover, .btn:hover { background: rgba(77, 182, 172, .14); border-color: var(--accent); }
+button:active, .btn:active { transform: translateY(1px); }
+button:disabled { opacity: .42; cursor: default; transform: none; }
+button:focus-visible, .btn:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--accent), #3d968e);
+  border-color: transparent;
+  color: #06231f;
+  font-weight: 700;
+}
+.btn-primary:hover { background: linear-gradient(180deg, var(--accent-2), var(--accent)); }
+
+/* ---------- 表單 ---------- */
+input, textarea, select {
+  font: inherit;
+  color: var(--ink);
+  background: rgba(10, 15, 21, .7);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 44px;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(77, 182, 172, .18);
+}
+textarea { resize: vertical; line-height: 1.9; }
+label { display: block; font-size: 13px; color: var(--dim); margin-bottom: 6px; }
+
+/* ---------- 文字工具 ---------- */
+.t-dim  { color: var(--dim); }
+.t-ok   { color: var(--ok); }
+.t-bad  { color: var(--bad); }
+.t-warn { color: var(--warn); }
+.t-gold { color: var(--gold); }
+.t-sm   { font-size: 13px; }
+.t-lg   { font-size: 20px; }
+.center { text-align: center; }
+
+.row { display: flex; gap: 10px; align-items: center; }
+.row-between { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.grow { flex: 1; }
+.stack > * + * { margin-top: 10px; }
+
+/* ---------- 載入與提示 ---------- */
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  color: var(--dim);
+  gap: 14px;
+}
+.spinner {
+  width: 34px; height: 34px;
+  border: 3px solid var(--line-2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.banner {
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid var(--line-2);
+}
+.banner-warn { background: rgba(255, 202, 40, .12); border-color: rgba(255, 202, 40, .4); }
+.banner-bad  { background: rgba(239, 83, 80, .12);  border-color: rgba(239, 83, 80, .4); }
+.banner-ok   { background: rgba(102, 187, 106, .12); border-color: rgba(102, 187, 106, .4); }
+
+/* ---------- 響應式 ---------- */
+
+/* 手機（預設）：單欄、較小留白 */
+:root { --pad: 14px; }
+
+/* 平板 */
+@media (min-width: 640px) {
+  :root { --pad: 18px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+}
+
+/* 桌機 */
+@media (min-width: 1024px) {
+  :root { --pad: 22px; }
+  body { font-size: 17px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+}
+
+/* 減少動態效果的偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
+}
