@@ -256,11 +256,17 @@ export function check(question, raw) {
     const mine = strict ? String(raw).trim() : normalizeText(raw);
     const mineSq = strict ? mine : squeeze(raw);
 
+    /* exact 為 true 時不做數值等價比對。
+     * 用於「答案必須化為最簡分數」這類要求特定寫法的題目：
+     * 10/12 雖然數值等於 5/6，但沒有化到最簡，不該算對。 */
+    const exact = !!question.answer?.exact;
+
     const hit = accept.some(a => {
       if (a === undefined || a === null) return false;
       const want = strict ? String(a).trim() : normalizeText(a);
       if (mine === want) return true;
       if (!strict && mineSq === squeeze(a)) return true;
+      if (exact) return false;
       // 若兩邊都是數字，也接受數值相等（例如 08 與 8）
       const x = parseNumeric(raw), y = parseNumeric(a);
       return !Number.isNaN(x) && !Number.isNaN(y) && Math.abs(x - y) < 1e-9;

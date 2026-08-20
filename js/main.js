@@ -10,6 +10,7 @@ import { parseNumeric } from './engine/answer.js';
 import * as Auth from './auth.js';
 import * as DB from './db.js';
 import { Cache, OfflineQueue, isOnline, watchNetwork } from './cache.js';
+import previewScreen from './screens/preview.js';
 
 const app = document.getElementById('app');
 const routes = new Map();
@@ -45,7 +46,8 @@ export function go(path) { location.hash = '#/' + path; }
 function card(title, bodyHtml) {
   return `<div class="wrap"><div class="card">
     <div class="card-title">${escapeHtml(title)}</div>${bodyHtml}
-  </div></div>`;
+  </div>
+  <div class="build-tag">版本 ${APP_VERSION}</div></div>`;
 }
 
 /** 讓 [data-go] 的按鈕可以切換畫面 */
@@ -76,6 +78,7 @@ register('home', {
           學生的作答畫面還沒做，下面三個是給爸爸驗證用的診斷頁。
         </div>
         <div class="row" style="flex-wrap:wrap;gap:8px">
+          <button data-go="preview" class="btn-primary">題庫預覽</button>
           <button data-go="diag">資料庫連線測試</button>
           <button data-go="selftest">環境自我檢查</button>
           <button data-go="mathdemo">數學式與答案比對</button>
@@ -337,6 +340,8 @@ register('selftest', {
     bindNav(host);
   }
 });
+
+register('preview', previewScreen);
 
 register('notfound', {
   render(host) {

@@ -51,15 +51,22 @@ export function hash(s) {
 }
 
 /** 以字串或數字為種子的偽隨機器（xorshift32）。
- *  同一顆種子永遠產生同一串數列，用於可重現的題目生成。 */
+ *  同一顆種子永遠產生同一串數列，用於可重現的題目生成。
+ *
+ *  注意：xorshift32 直接吃小整數種子時，前幾個輸出的分布很差，
+ *  相鄰的種子會產生幾乎相同的數列。這會讓不同題目的隨機參數撞在一起，
+ *  所以先把種子過一次雜湊打散，再丟掉前幾個輸出暖機。 */
 export function seeded(seed) {
-  let s = (typeof seed === 'number' ? seed >>> 0 : hash(String(seed))) || 1;
-  return function rng() {
+  const raw = typeof seed === 'number' ? (seed >>> 0) : hash(String(seed));
+  let s = hash('seed:' + raw) || 1;
+  const rng = function () {
     s ^= s << 13; s >>>= 0;
     s ^= s >> 17;
     s ^= s << 5;  s >>>= 0;
     return s / 4294967296;
   };
+  for (let i = 0; i < 8; i++) rng();
+  return rng;
 }
 
 /** 千分位格式化 */
